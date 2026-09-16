@@ -1,0 +1,28 @@
+<div>
+  <h2 class="text-lg font-semibold text-slate-900">Channels</h2>
+  <p class="mt-1 text-sm text-slate-500">
+    Pick the channels this engagement will run on. Only channels used by the duties of your selected
+    roles are shown below, grouped by discipline.
+  </p>
+
+  <div *ngIf="channelGroups().length === 0"
+    class="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+    No roles selected yet — go back to step 2 to pick roles.
+  </div>
+
+  <div class="mt-6 space-y-6">
+    <div *ngFor="let group of channelGroups()">
+      <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ group.role }}</h3>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <label *ngFor="let channel of group.channels"
+          class="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+          [class.border-emerald-500]="isSelected(channel.id)" [class.bg-emerald-50]="isSelected(channel.id)"
+          [class.border-slate-200]="!isSelected(channel.id)">
+          <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            [checked]="isSelected(channel.id)" (change)="toggle(channel.id)" />
+          <span class="text-slate-700">{{ channel.name }}</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>

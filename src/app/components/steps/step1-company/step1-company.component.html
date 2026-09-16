@@ -1,0 +1,135 @@
+<div class="space-y-8">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-900">Your company details</h2>
+    <p class="mt-1 text-sm text-slate-500">This appears on the quotation letterhead.</p>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <app-logo-upload
+          [logoDataUrl]="state.company().logoDataUrl"
+          (logoChange)="onLogoChange($event)"
+        ></app-logo-upload>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Company name</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="Acme Consulting Ltd"
+          [ngModel]="state.company().name"
+          (ngModelChange)="state.updateCompany({ name: $event })"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Phone</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="+254 7XX XXX XXX"
+          [ngModel]="state.company().phone"
+          (ngModelChange)="state.updateCompany({ phone: $event })"
+        />
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700">Address</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="Street, City, Country"
+          [ngModel]="state.company().address"
+          (ngModelChange)="state.updateCompany({ address: $event })"
+        />
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700">Email</label>
+        <input
+          type="email"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="hello@company.com"
+          [ngModel]="state.company().email"
+          (ngModelChange)="state.updateCompany({ email: $event })"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="border-t border-slate-200 pt-6">
+    <h2 class="text-lg font-semibold text-slate-900">Client details</h2>
+    <p class="mt-1 text-sm text-slate-500">Who this quotation is for.</p>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700">Client name</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="Client / Company Name"
+          [ngModel]="state.client().name"
+          (ngModelChange)="state.updateClient({ name: $event })"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Address</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="Client address"
+          [ngModel]="state.client().address"
+          (ngModelChange)="state.updateClient({ address: $event })"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Contact</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          placeholder="Phone / email"
+          [ngModel]="state.client().contact"
+          (ngModelChange)="state.updateClient({ contact: $event })"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="border-t border-slate-200 pt-6">
+    <h2 class="text-lg font-semibold text-slate-900">Quote settings</h2>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Quote No.</label>
+        <input
+          type="text"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          [ngModel]="state.quoteNo()"
+          (ngModelChange)="state.quoteNo.set($event)"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Validity (days)</label>
+        <input
+          type="number"
+          min="1"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          [ngModel]="state.validityDays()"
+          (ngModelChange)="state.validityDays.set(+$event)"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Valid until</label>
+        <div
+          class="mt-1 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+        >
+          {{ state.validUntil() | date: 'dd MMM yyyy' }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

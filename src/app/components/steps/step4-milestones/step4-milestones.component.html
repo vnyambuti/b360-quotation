@@ -1,0 +1,84 @@
+<div>
+  <h2 class="text-lg font-semibold text-slate-900">Tax &amp; payment cycle</h2>
+  <p class="mt-1 text-sm text-slate-500">
+    Choose how often payments fall and how many cycles to split the grand total across. Each
+    payment is an equal share of the total, including VAT.
+  </p>
+
+  <div class="mt-4 flex flex-wrap gap-6">
+    <div class="max-w-xs">
+      <label class="block text-sm font-medium text-slate-700">VAT rate</label>
+      <div class="mt-1 flex items-center gap-2">
+        <input type="number" min="0" max="100" step="0.1"
+          class="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+          [ngModel]="state.taxRate() * 100" (ngModelChange)="state.taxRate.set(+$event / 100)" />
+        <span class="text-sm text-slate-500">%</span>
+      </div>
+    </div>
+
+    <div class="max-w-xs">
+      <label class="block text-sm font-medium text-slate-700">Payment frequency</label>
+      <select
+        class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+        [ngModel]="state.paymentCycle().frequency" (ngModelChange)="state.updatePaymentCycle({ frequency: $event })">
+        <option *ngFor="let f of frequencies" [value]="f">{{ f }}</option>
+      </select>
+    </div>
+
+    <div class="max-w-xs">
+      <label class="block text-sm font-medium text-slate-700">
+        Number of {{ state.paymentCycle().frequency.toLowerCase() }} cycles
+      </label>
+      <input type="number" min="1" step="1"
+        class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:text-sm"
+        [ngModel]="state.paymentCycle().cycleCount"
+        (ngModelChange)="state.updatePaymentCycle({ cycleCount: +$event })" />
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-4">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-slate-400">Subtotal</p>
+      <p class="mt-0.5 font-semibold text-slate-800">{{ state.subtotal() | currency: 'KES ' }}</p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide text-slate-400">VAT ({{ state.taxRate() * 100 }}%)</p>
+      <p class="mt-0.5 font-semibold text-slate-800">{{ state.taxAmount() | currency: 'KES ' }}</p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide text-slate-400">Grand total</p>
+      <p class="mt-0.5 font-semibold text-emerald-700">{{ state.grandTotal() | currency: 'KES ' }}</p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide text-slate-400">Per payment</p>
+      <p class="mt-0.5 font-semibold text-slate-800">
+        {{ (state.grandTotal() / state.paymentCycle().cycleCount) | currency: 'KES ' }}
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-6 overflow-hidden rounded-lg border border-slate-200">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50">
+        <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <th class="px-3 py-2 w-32">Payment</th>
+          <th class="px-3 py-2">Due date</th>
+          <th class="px-3 py-2 w-32 text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 bg-white">
+        <tr *ngFor="let p of state.cyclePayments()">
+          <td class="px-3 py-2 font-medium text-slate-700">{{ p.label }}</td>
+          <td class="px-3 py-2 text-slate-600">{{ p.dueDate | date: 'mediumDate' }}</td>
+          <td class="px-3 py-2 text-right font-medium text-slate-800">{{ p.amount | currency: 'KES ' }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="border-t border-slate-200 bg-slate-50 font-semibold">
+          <td class="px-3 py-2" colspan="2">Total across all payments</td>
+          <td class="px-3 py-2 text-right text-emerald-700">{{ state.grandTotal() | currency: 'KES ' }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

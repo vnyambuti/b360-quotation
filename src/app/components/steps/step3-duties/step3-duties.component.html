@@ -1,0 +1,91 @@
+<div>
+  <h2 class="text-lg font-semibold text-slate-900">Duties, pricing &amp; interval</h2>
+  <p class="mt-1 text-sm text-slate-500">
+    Adjust the billing period and number of interval/frequency for each duty. Unit prices are fixed
+    per role and can't be edited here. The line total updates live. Remove a duty you don't need —
+    you can add it back at any time.
+  </p>
+
+  <div *ngIf="groupedLineItems().length === 0"
+    class="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+    No roles selected yet — go back to step 2 to pick roles.
+  </div>
+
+  <div class="mt-6 space-y-8">
+    <div *ngFor="let group of groupedLineItems()">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-emerald-700">{{ group.role.name }}</h3>
+        <span class="text-sm font-semibold text-slate-700">{{ group.total | currency: 'KES ' }}</span>
+      </div>
+
+      <div *ngIf="group.items.length === 0"
+        class="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
+        No duties for this role match the channels you selected.
+      </div>
+
+      <div *ngIf="group.items.length > 0" class="overflow-hidden rounded-lg border border-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50">
+            <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th class="px-3 py-2">Duty</th>
+              <th class="px-3 py-2 w-28">Unit price</th>
+              <th class="px-3 py-2 w-28">Interval</th>
+              <th class="px-3 py-2 w-24">Period</th>
+              <th class="px-3 py-2 w-28 text-right">Line total</th>
+              <th class="px-3 py-2 w-10"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            <tr *ngFor="let item of group.items">
+              <td class="px-3 py-2 text-slate-700">
+                {{ item.dutyName }}
+                <div class="mt-1 flex flex-wrap gap-1">
+                  <span *ngFor="let name of dutyChannelNames(item.roleId, item.dutyId)"
+                    class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    {{ name }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-3 py-2 text-slate-700">
+                {{ item.unitPrice | currency: 'KES ' }}
+              </td>
+              <td class="px-3 py-2">
+                <select
+                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  [ngModel]="item.interval" (ngModelChange)="onFieldChange(item, { interval: $event })">
+                  <option *ngFor="let iv of intervals" [value]="iv">{{ iv }}</option>
+                </select>
+              </td>
+              <td class="px-3 py-2">
+                <input type="number" min="1"
+                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  [ngModel]="item.intervals" (ngModelChange)="onFieldChange(item, { intervals: +$event })" />
+              </td>
+              <td class="px-3 py-2 text-right font-medium text-slate-800">
+                {{ item.unitPrice * item.intervals | currency: 'KES ' }}
+              </td>
+              <td class="px-3 py-2 text-center">
+                <button type="button" (click)="removeDuty(item)"
+                  class="rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  title="Remove duty" aria-label="Remove duty">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="group.removedDuties.length > 0" class="mt-2 flex flex-wrap items-center gap-2">
+        <span class="text-xs text-slate-400">Removed:</span>
+        <button *ngFor="let duty of group.removedDuties" type="button" (click)="restoreDuty(duty.id)"
+          class="flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs text-slate-500 transition-colors hover:border-emerald-400 hover:text-emerald-700">
+          <span>{{ duty.name }}</span>
+          <span class="font-semibold">+ Add back</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

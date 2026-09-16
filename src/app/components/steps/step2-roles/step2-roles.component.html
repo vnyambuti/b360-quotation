@@ -1,0 +1,52 @@
+<div>
+  <h2 class="text-lg font-semibold text-slate-900">Select the roles for this quotation</h2>
+  <p class="mt-1 text-sm text-slate-500">
+    You can select more than one role — each one you pick will load its duties, pre-priced, in the next step.
+  </p>
+
+  <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <button
+      *ngFor="let role of state.roleLibrary"
+      type="button"
+      (click)="state.toggleRole(role.id)"
+      class="relative flex flex-col items-start rounded-xl border p-4 text-left transition-all"
+      [class.border-emerald-500]="state.isRoleSelected(role.id)"
+      [class.ring-2]="state.isRoleSelected(role.id)"
+      [class.ring-emerald-200]="state.isRoleSelected(role.id)"
+      [class.bg-emerald-50]="state.isRoleSelected(role.id)"
+      [class.border-slate-200]="!state.isRoleSelected(role.id)"
+      [class.hover:border-slate-300]="!state.isRoleSelected(role.id)"
+    >
+      <span
+        class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded border"
+        [class.bg-emerald-600]="state.isRoleSelected(role.id)"
+        [class.border-emerald-600]="state.isRoleSelected(role.id)"
+        [class.border-slate-300]="!state.isRoleSelected(role.id)"
+      >
+        <svg
+          *ngIf="state.isRoleSelected(role.id)"
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-3.5 w-3.5 text-white"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 111.414-1.414l2.793 2.792 6.793-6.793a1 1 0 011.414 0z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </span>
+
+      <span class="text-sm font-semibold text-slate-900">{{ role.name }}</span>
+      <span class="mt-1 text-xs text-slate-500">{{ role.description }}</span>
+      <span class="mt-3 text-xs font-medium text-emerald-700">
+        {{ role.duties.length }} duties included
+      </span>
+    </button>
+  </div>
+
+  <p *ngIf="state.selectedRoleIds().length === 0" class="mt-4 text-sm text-amber-600">
+    Select at least one role to continue.
+  </p>
+</div>
