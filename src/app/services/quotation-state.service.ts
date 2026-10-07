@@ -2,16 +2,53 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   CompanyDetails,
   ClientDetails,
+  Duty,
+  Interval,
   LineItem,
   PaymentCycle,
   CyclePayment,
+  RoleDefinition,
+  lineTotal,
+  withChannel,
 } from '../models/quotation.models';
-import { ROLE_LIBRARY, CHANNEL_CATALOG } from '../data/roles-duties.data';
+import {
+  GetProviderData,
+  ProviderChannel,
+  ProviderDuty,
+  ProviderProfile,
+  ProviderTitle,
+} from '../models/provider.models';
+import { PublicQuotePayload, PublicQuoteResult } from '../models/public-quote.models';
+import { buildChannelCatalog, buildRoleLibrary } from '../data/provider-catalog';
+
+export type ProviderLookupStatus = 'idle' | 'loading' | 'success' | 'error';
+export type PublishStatus = 'idle' | 'loading' | 'success' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class QuotationStateService {
-  readonly roleLibrary = ROLE_LIBRARY;
-  readonly channelCatalog = CHANNEL_CATALOG;
+  // ---------- Provider directory ----------
+  readonly providerList = signal<ProviderProfile[]>([]);
+  readonly listStatus = signal<ProviderLookupStatus>('idle');
+  readonly listError = signal<string | null>(null);
+
+  // ---------- Selected provider ----------
+  readonly provider = signal<ProviderProfile | null>(null);
+  readonly providerTitles = signal<ProviderTitle[]>([]);
+  readonly providerDuties = signal<ProviderDuty[]>([]);
+  readonly providerChannels = signal<ProviderChannel[]>([]);
+  readonly lookupStatus = signal<ProviderLookupStatus>('idle');
+  readonly lookupError = signal<string | null>(null);
+  /** Which tile in the directory is currently being fetched, for per-tile spinners. */
+  readonly pendingProviderId = signal<number | null>(null);
+
+  /** Prefilled details stay read-only until the user asks to look up a different account. */
+  readonly companyLocked = computed(() => this.provider() !== null);
+  readonly providerDetailsLoaded = computed(() => this.provider() !== null);
+
+  readonly roleLibrary = computed(() =>
+    buildRoleLibrary(this.providerTitles(), this.providerDuties()),
+  );
+  readonly channelCatalog = computed(() => buildChannelCatalog(this.providerChannels()));
 
   // ---------- Step 1: Company & client ----------
   readonly company = signal<CompanyDetails>({
@@ -22,7 +59,6 @@ export class QuotationStateService {
     logoDataUrl: null,
   });
   readonly client = signal<ClientDetails>({ name: '', address: '', contact: '' });
-  readonly quoteNo = signal(this.generateQuoteNo());
   readonly dateIssued = signal<Date>(new Date());
   readonly validityDays = signal(30);
 
@@ -40,6 +76,13 @@ export class QuotationStateService {
   readonly taxRate = signal(0.16); // 16% VAT
   readonly paymentCycle = signal<PaymentCycle>({ frequency: 'Monthly', cycleCount: 3 });
 
+  // ---------- Publishing ----------
+  readonly publishStatus = signal<PublishStatus>('idle');
+  readonly publishError = signal<string | null>(null);
+  /** The shareable link the API handed back once the quote went live. */
+  readonly publicQuoteUrl = signal<string | null>(null);
+  readonly publishMessage = signal<string | null>(null);
+
   // ---------- Derived / computed ----------
   readonly validUntil = computed(() => {
     const d = new Date(this.dateIssued());
@@ -47,16 +90,24 @@ export class QuotationStateService {
     return d;
   });
 
+  /** Lines with at least one channel ticked. Everything billable or published comes from here. */
+  readonly activeLineItems = computed(() =>
+    this.lineItems().filter((li) => li.channels.some((c) => c.selected)),
+  );
+
+  /** At least one line is billable. Used by the wizard's "Duties & Pricing" step check. */
+  readonly lineItemsValid = computed(() => this.activeLineItems().length > 0);
+
   readonly subtotal = computed(() =>
-    this.lineItems().reduce((sum, li) => sum + li.unitPrice * li.intervals, 0)
+    this.activeLineItems().reduce((sum, li) => sum + lineTotal(li), 0),
   );
   readonly taxAmount = computed(() => this.subtotal() * this.taxRate());
   readonly grandTotal = computed(() => this.subtotal() + this.taxAmount());
 
   readonly roleSubtotals = computed(() => {
     const map = new Map<string, number>();
-    for (const li of this.lineItems()) {
-      map.set(li.roleName, (map.get(li.roleName) ?? 0) + li.unitPrice * li.intervals);
+    for (const li of this.activeLineItems()) {
+      map.set(li.roleName, (map.get(li.roleName) ?? 0) + lineTotal(li));
     }
     return Array.from(map.entries()).map(([roleName, total]) => ({ roleName, total }));
   });
@@ -83,13 +134,139 @@ export class QuotationStateService {
    *  "balanced" once it has at least one cycle, since the split is always equal by construction. */
   readonly paymentCycleValid = computed(() => this.paymentCycle().cycleCount >= 1);
 
+  /** The exact body posted to `POST /api/publicquote`, with every `Date` flattened to ISO-8601 so
+   *  the payload survives `JSON.stringify`. */
+  readonly publicQuotePayload = computed<PublicQuotePayload>(() => {
+    const company = this.company();
+    const client = this.client();
+    const activeItems = this.activeLineItems();
+
+    return {
+      dateIssued: this.dateIssued().toISOString(),
+      validUntil: this.validUntil().toISOString(),
+      validityDays: this.validityDays(),
+      company: { ...company },
+      client: { ...client },
+      roleIds: this.selectedRoleIds(),
+      // Derived from what was actually ticked on each duty, not from step 3 alone.
+      channelIds: [
+        ...new Set(
+          activeItems.flatMap((li) =>
+            li.channels.filter((c) => c.selected).map((c) => c.channelId),
+          ),
+        ),
+      ],
+      lineItems: activeItems,
+      taxRate: this.taxRate(),
+      subtotal: this.subtotal(),
+      taxAmount: this.taxAmount(),
+      grandTotal: this.grandTotal(),
+      paymentCycle: { ...this.paymentCycle() },
+      payments: this.cyclePayments().map((p) => ({
+        index: p.index,
+        label: p.label,
+        dueDate: p.dueDate.toISOString(),
+        amount: p.amount,
+      })),
+    };
+  });
+
   // ---------- Mutators ----------
   updateCompany(patch: Partial<CompanyDetails>) {
     this.company.update((c) => ({ ...c, ...patch }));
   }
 
+  startLookup(providerId: number) {
+    this.pendingProviderId.set(providerId);
+    this.lookupStatus.set('loading');
+    this.lookupError.set(null);
+  }
+
+  failLookup(message: string) {
+    this.pendingProviderId.set(null);
+    this.lookupStatus.set('error');
+    this.lookupError.set(message);
+  }
+
+  setProviderList(providers: ProviderProfile[]) {
+    this.providerList.set(providers);
+    this.listStatus.set('success');
+    this.listError.set(null);
+  }
+
+  failProviderList(message: string) {
+    this.listStatus.set('error');
+    this.listError.set(message);
+  }
+
+  /** Stores a successful lookup: prefills the locked company fields and swaps in the
+   *  provider's own roles, duties and channels, discarding anything selected from the
+   *  previous catalog. */
+  applyProvider(data: GetProviderData) {
+    this.provider.set(data.provider);
+    this.providerTitles.set(data.titles);
+    this.providerDuties.set(data.duties);
+    this.providerChannels.set(data.channels);
+    this.lookupStatus.set('success');
+    this.lookupError.set(null);
+    this.pendingProviderId.set(null);
+
+    this.updateCompany({
+      name: data.provider.name,
+      phone: data.provider.phone,
+      email: data.provider.email,
+    });
+
+    this.resetQuotationBody();
+  }
+
+  /** Unlocks the company fields so a different account can be looked up. */
+  resetProvider() {
+    this.provider.set(null);
+    this.providerTitles.set([]);
+    this.providerDuties.set([]);
+    this.providerChannels.set([]);
+    this.lookupStatus.set('idle');
+    this.lookupError.set(null);
+    this.pendingProviderId.set(null);
+
+    this.updateCompany({ name: '', phone: '', email: '' });
+    this.resetQuotationBody();
+  }
+
+  private resetQuotationBody() {
+    this.selectedRoleIds.set([]);
+    this.selectedChannelIds.set([]);
+    this.lineItems.set([]);
+    this.removedDutyIds.set(new Set());
+    // A link published for the old body is stale the moment the quote changes.
+    this.publishStatus.set('idle');
+    this.publishError.set(null);
+    this.publicQuoteUrl.set(null);
+    this.publishMessage.set(null);
+  }
+
   updateClient(patch: Partial<ClientDetails>) {
     this.client.update((c) => ({ ...c, ...patch }));
+  }
+
+  startPublish() {
+    this.publishStatus.set('loading');
+    this.publishError.set(null);
+    this.publicQuoteUrl.set(null);
+    this.publishMessage.set(null);
+  }
+
+  failPublish(message: string) {
+    this.publishStatus.set('error');
+    this.publishError.set(message);
+  }
+
+  succeedPublish(result: PublicQuoteResult) {
+    this.publishStatus.set('success');
+    this.publishError.set(null);
+    this.publicQuoteUrl.set(result.publicUrl || null);
+    this.publishMessage.set(result.message || null);
   }
 
   toggleRole(roleId: string) {
@@ -106,12 +283,15 @@ export class QuotationStateService {
     return this.selectedRoleIds().includes(roleId);
   }
 
+  /** Step 3 toggle. Also pushes the choice into every line item so channels ticked here
+   *  are preselected on each duty that supports them. */
   toggleChannel(channelId: string) {
     const current = this.selectedChannelIds();
-    const next = current.includes(channelId)
-      ? current.filter((id) => id !== channelId)
-      : [...current, channelId];
-    this.selectedChannelIds.set(next);
+    const on = !current.includes(channelId);
+    this.selectedChannelIds.set(
+      on ? [...current, channelId] : current.filter((id) => id !== channelId),
+    );
+    this.lineItems.update((items) => items.map((li) => withChannel(li, channelId, on)));
   }
 
   isChannelSelected(channelId: string): boolean {
@@ -121,7 +301,7 @@ export class QuotationStateService {
   private channelIdsForRoles(roleIds: string[]): Set<string> {
     const ids = new Set<string>();
     for (const roleId of roleIds) {
-      const role = this.roleLibrary.find((r) => r.id === roleId);
+      const role = this.roleLibrary().find((r) => r.id === roleId);
       role?.duties.forEach((duty) => duty.channelIds.forEach((id) => ids.add(id)));
     }
     return ids;
@@ -132,6 +312,27 @@ export class QuotationStateService {
     this.selectedChannelIds.update((ids) => ids.filter((id) => available.has(id)));
   }
 
+  /** Builds a line item for a duty. Channels ticked in step 3 are preselected where the duty
+   *  has a rate for them; the line's interval is taken from the first preselected channel. */
+  private createLineItem(role: RoleDefinition, duty: Duty): LineItem {
+    const wanted = new Set(this.selectedChannelIds());
+    const first = duty.channelRates.find((r) => wanted.has(r.channelId));
+    const interval: Interval = first?.interval ?? duty.channelRates[0]?.interval ?? 'Monthly';
+
+    return {
+      roleId: role.id,
+      roleName: role.name,
+      dutyId: duty.id,
+      dutyName: duty.name,
+      channels: duty.channelRates.map((r) => ({
+        ...r,
+        selected: wanted.has(r.channelId) && r.interval === interval,
+      })),
+      interval,
+      intervals: 1,
+    };
+  }
+
   private syncLineItemsWithRoles(roleIds: string[]) {
     const existing = this.lineItems();
     const kept = existing.filter((li) => roleIds.includes(li.roleId));
@@ -140,19 +341,11 @@ export class QuotationStateService {
 
     const additions: LineItem[] = [];
     for (const roleId of roleIds) {
-      const role = this.roleLibrary.find((r) => r.id === roleId);
+      const role = this.roleLibrary().find((r) => r.id === roleId);
       if (!role) continue;
       for (const duty of role.duties) {
         if (!keptDutyIds.has(duty.id) && !removed.has(duty.id)) {
-          additions.push({
-            roleId: role.id,
-            roleName: role.name,
-            dutyId: duty.id,
-            dutyName: duty.name,
-            unitPrice: duty.defaultPrice,
-            interval: 'Weekly',
-            intervals: 1,
-          });
+          additions.push(this.createLineItem(role, duty));
         }
       }
     }
@@ -162,7 +355,9 @@ export class QuotationStateService {
       const next = new Set(set);
       for (const dutyId of set) {
         const stillInScope = roleIds.some((rid) =>
-          this.roleLibrary.find((r) => r.id === rid)?.duties.some((d) => d.id === dutyId),
+          this.roleLibrary()
+            .find((r) => r.id === rid)
+            ?.duties.some((d) => d.id === dutyId),
         );
         if (!stillInScope) next.delete(dutyId);
       }
@@ -172,8 +367,25 @@ export class QuotationStateService {
 
   updateLineItem(dutyId: string, patch: Partial<LineItem>) {
     this.lineItems.update((items) =>
-      items.map((li) => (li.dutyId === dutyId ? { ...li, ...patch } : li))
+      items.map((li) => (li.dutyId === dutyId ? { ...li, ...patch } : li)),
     );
+  }
+
+  /** Ticks or unticks one channel on one duty. The line's interval follows the first ticked
+   *  channel, and a channel with a clashing interval is refused (see `withChannel`). */
+  toggleDutyChannel(dutyId: string, channelId: string) {
+    this.lineItems.update((items) =>
+      items.map((li) => {
+        if (li.dutyId !== dutyId) return li;
+        const current = li.channels.find((c) => c.channelId === channelId);
+        return current ? withChannel(li, channelId, !current.selected) : li;
+      }),
+    );
+  }
+
+  /** Only the count is editable; the unit (day/week/month) comes from the channel rates. */
+  setIntervals(dutyId: string, count: number) {
+    this.updateLineItem(dutyId, { intervals: Math.max(1, Math.floor(count) || 1) });
   }
 
   removeDuty(dutyId: string) {
@@ -183,18 +395,10 @@ export class QuotationStateService {
 
   restoreDuty(dutyId: string) {
     let restored: LineItem | null = null;
-    for (const role of this.roleLibrary) {
+    for (const role of this.roleLibrary()) {
       const duty = role.duties.find((d) => d.id === dutyId);
       if (duty) {
-        restored = {
-          roleId: role.id,
-          roleName: role.name,
-          dutyId: duty.id,
-          dutyName: duty.name,
-          unitPrice: duty.defaultPrice,
-          interval: 'Weekly',
-          intervals: 1,
-        };
+        restored = this.createLineItem(role, duty);
         break;
       }
     }
@@ -216,13 +420,10 @@ export class QuotationStateService {
     this.paymentCycle.update((c) => ({
       ...c,
       ...patch,
-      cycleCount: patch.cycleCount !== undefined ? Math.max(1, Math.floor(patch.cycleCount) || 1) : c.cycleCount,
+      cycleCount:
+patch.cycleCount !== undefined
+        ? Math.max(1, Math.floor(patch.cycleCount) || 1)
+        : c.cycleCount,
     }));
-  }
-
-  private generateQuoteNo(): string {
-    const year = new Date().getFullYear();
-    const rand = Math.floor(100 + Math.random() * 900);
-    return `Q-${year}-${rand}`;
   }
 }

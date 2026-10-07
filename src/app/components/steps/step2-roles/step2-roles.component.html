@@ -1,12 +1,13 @@
 <div>
   <h2 class="text-lg font-semibold text-slate-900">Select the roles for this quotation</h2>
   <p class="mt-1 text-sm text-slate-500">
-    You can select more than one role — each one you pick will load its duties, pre-priced, in the next step.
+    You can select more than one role — each one you pick will load its duties, pre-priced, in the
+    next step.
   </p>
 
   <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
     <button
-      *ngFor="let role of state.roleLibrary"
+      *ngFor="let role of state.roleLibrary()"
       type="button"
       (click)="state.toggleRole(role.id)"
       class="relative flex flex-col items-start rounded-xl border p-4 text-left transition-all"

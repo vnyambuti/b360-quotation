@@ -2,8 +2,15 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuotationStateService } from '../../../services/quotation-state.service';
-import { Duty, Interval, LineItem } from '../../../models/quotation.models';
-import { CHANNEL_CATALOG } from '../../../data/roles-duties.data';
+import {
+  Duty,
+  LineChannel,
+  LineItem,
+  intervalUnit,
+  isChannelSelectable,
+  lineTotal,
+  periodCost,
+} from '../../../models/quotation.models';
 
 @Component({
   selector: 'app-step3-duties',
@@ -14,39 +21,30 @@ import { CHANNEL_CATALOG } from '../../../data/roles-duties.data';
 export class Step3DutiesComponent {
   state = inject(QuotationStateService);
 
-  readonly intervals: Interval[] = ['Daily', 'Weekly', 'Monthly'];
+  // Exposed for the template.
+  readonly lineTotal = lineTotal;
+  readonly periodCost = periodCost;
+  readonly isChannelSelectable = isChannelSelectable;
+  readonly intervalUnit = intervalUnit;
 
-  private dutyChannelIds(roleId: string, dutyId: string): string[] {
-    const role = this.state.roleLibrary.find((r) => r.id === roleId);
-    return role?.duties.find((d) => d.id === dutyId)?.channelIds ?? [];
-  }
-
-  /** Line items grouped by role, filtered to duties tied to at least one selected channel,
-   *  plus that role's manually-removed duties so they can be added back. */
+  /** Line items grouped by role, plus each role's removed duties so they can be added back. */
   readonly groupedLineItems = computed(() => {
     const items = this.state.lineItems();
-    const roleIds = this.state.selectedRoleIds();
-    const selectedChannels = this.state.selectedChannelIds();
-    return roleIds.map((roleId) => {
-      const role = this.state.roleLibrary.find((r) => r.id === roleId)!;
-      const roleItems = items
-        .filter((li) => li.roleId === roleId)
-        .filter((li) => this.dutyChannelIds(roleId, li.dutyId).some((id) => selectedChannels.includes(id)));
-      const total = roleItems.reduce((sum, li) => sum + li.unitPrice * li.intervals, 0);
+    return this.state.selectedRoleIds().map((roleId) => {
+      const role = this.state.roleLibrary().find((r) => r.id === roleId)!;
+      const roleItems = items.filter((li) => li.roleId === roleId);
+      const total = roleItems.reduce((sum, li) => sum + lineTotal(li), 0);
       const removedDuties: Duty[] = role.duties.filter((d) => this.state.isDutyRemoved(d.id));
       return { role, items: roleItems, total, removedDuties };
     });
   });
 
-  dutyChannelNames(roleId: string, dutyId: string): string[] {
-    const selected = this.state.selectedChannelIds();
-    return this.dutyChannelIds(roleId, dutyId)
-      .filter((id) => selected.includes(id))
-      .map((id) => CHANNEL_CATALOG.find((c) => c.id === id)?.name ?? id);
+  toggleChannel(item: LineItem, channel: LineChannel) {
+    this.state.toggleDutyChannel(item.dutyId, channel.channelId);
   }
 
-  onFieldChange(item: LineItem, patch: Partial<LineItem>) {
-    this.state.updateLineItem(item.dutyId, patch);
+  onIntervalsChange(item: LineItem, value: number) {
+    this.state.setIntervals(item.dutyId, value);
   }
 
   removeDuty(item: LineItem) {

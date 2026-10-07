@@ -44,7 +44,7 @@
           <input type="file" accept="image/*" class="hidden" (change)="onFileSelected($event)" />
         </label>
       </p>
-      <p class="text-xs text-slate-400">PNG, JPG or SVG, up to 2MB.</p>
+      <p class="text-xs text-slate-400">PNG, JPG or SVG, up to 2MB. Scaled to 512px automatically.</p>
       <p *ngIf="error" class="mt-1 text-xs font-medium text-rose-600">{{ error }}</p>
     </div>
 

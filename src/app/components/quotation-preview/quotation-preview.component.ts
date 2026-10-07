@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { QuotationStateService } from '../../services/quotation-state.service';
+import { lineTotal } from '../../models/quotation.models';
 
 @Component({
   selector: 'app-quotation-preview',
@@ -10,4 +11,5 @@ import { QuotationStateService } from '../../services/quotation-state.service';
 })
 export class QuotationPreviewComponent {
   state = inject(QuotationStateService);
+  readonly lineTotal = lineTotal;
 }

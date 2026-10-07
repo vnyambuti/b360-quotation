@@ -22,7 +22,6 @@
   <!-- Meta -->
   <div class="mt-3 grid grid-cols-2 gap-4">
     <div class="space-y-1">
-      <div class="flex"><span class="w-24 font-semibold">Quote No:</span><span>{{ state.quoteNo() }}</span></div>
       <div class="flex"><span class="w-24 font-semibold">Date:</span><span>{{ state.dateIssued() | date: 'dd MMM yyyy'
           }}</span></div>
       <div class="flex"><span class="w-24 font-semibold">Valid Until:</span><span>{{ state.validUntil() | date: 'dd MMM
@@ -54,7 +53,7 @@
         class="border-b border-slate-200">
         <td class="px-1.5 py-1">{{ li.dutyName }}</td>
         <td class="px-1.5 py-1 text-center">{{ li.interval }} &times;{{ li.intervals }}</td>
-        <td class="px-1.5 py-1 text-right">{{ li.unitPrice * li.intervals | currency: 'KES ' }}</td>
+        <td class="px-1.5 py-1 text-right">{{ lineTotal(li) | currency: 'KES ' }}</td>
       </tr>
       <tr *ngIf="state.lineItems().length === 0">
         <td colspan="3" class="px-1.5 py-3 text-center text-slate-400">No duties selected yet</td>
