@@ -6,6 +6,11 @@ A guided web app for service providers to build professional, branded quotations
 
 ![Quotation Generator: review step with live preview](docs/screenshots/06-review.png)
 
+
+## Demo
+ 
+**Live demo:** [https://b360-quotation.vercel.app/](https://b360-quotation.vercel.app/)
+
 ## Features
 
 - **Six-step wizard** with a progress tracker: Company & Client → Select Roles → Channels → Duties & Pricing → Payment Cycle → Review.
