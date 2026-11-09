@@ -60,8 +60,8 @@ A guided web app for service providers to build professional, branded quotations
 ## License
 
 <!-- Add your license, e.g. MIT -->
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License.
 
 ## Author
 
-**Victor Nyambuti** (Kov): [portfolio](https://victornyambuti.com) <!-- update link -->
+**Victor Nyambuti**  <!-- update link -->
