@@ -32,8 +32,6 @@ A guided web app for service providers to build professional, branded quotations
 
 ## How It Works
 
-![Duties and pricing step](docs/screenshots/04-duties-pricing.png)
-
 1. **Company & Client**: choose the provider, then enter the client's name, email and phone. Set how many days the quote stays valid.
 2. **Select Roles**: tick the roles that apply. Each role shows how many duties it includes.
 3. **Channels**: tick the channels (for example Web) the engagement will run on.
@@ -93,7 +91,7 @@ sequenceDiagram
 
 ## Usage
 
-1. Sign in and make sure at least one provider exists with roles, duties and channel rates configured.
+1. Make sure at least one provider exists with roles, duties and channel rates configured this is done via the admin side the .
 2. Start a new quotation and follow the six steps.
 3. Publish the quotation to generate the final document.
 
