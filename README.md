@@ -2,6 +2,8 @@
 
 A guided web app for service providers to build professional, branded quotations in minutes. Pick a provider, choose the roles and channels you're quoting for, set pricing and a payment schedule, and watch the quotation take shape in a live preview before publishing it.
 
+> **Note:** This quotation service is one of the services of the **B360** product.
+
 ![Quotation Generator: review step with live preview](docs/screenshots/06-review.png)
 
 ## Features
@@ -91,7 +93,7 @@ sequenceDiagram
 
 ## Usage
 
-1. Make sure at least one provider exists with roles, duties and channel rates configured this is done via the admin side the .
+1. Make sure at least one provider exists with roles, duties and channel rates configured this is done via the admin side.
 2. Start a new quotation and follow the six steps.
 3. Publish the quotation to generate the final document.
 
