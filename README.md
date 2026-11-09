@@ -41,6 +41,52 @@ A guided web app for service providers to build professional, branded quotations
 5. **Payment Cycle**: set the VAT rate, payment frequency and number of cycles. The schedule table shows each due date and amount.
 6. **Review**: check the live preview and click **Publish Quotation**.
 
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Angular App (wizard + live preview)
+    participant API as Backend API
+    participant DB as Database
+
+    Note over User,DB: Step 1: Company & Client
+    User->>App: Select service provider
+    App->>API: Request provider details
+    API->>DB: Load provider, roles, duties, channels
+    DB-->>API: Provider data
+    API-->>App: Provider data
+    App-->>User: Provider card + live preview
+    User->>App: Enter client details and validity (days)
+    App-->>User: Preview updates, "valid until" calculated
+
+    Note over User,DB: Step 2: Select Roles
+    User->>App: Tick one or more roles
+    App-->>User: Preview lists pre-priced duties
+
+    Note over User,DB: Step 3: Channels
+    User->>App: Tick channels
+    App-->>User: Preview updates
+
+    Note over User,DB: Step 4: Duties & Pricing
+    User->>App: Tick channels per duty, set billing periods
+    App->>App: Line totals = channel rate x periods
+    App-->>User: Subtotal, VAT and total update live
+
+    Note over User,DB: Step 5: Payment Cycle
+    User->>App: Set VAT rate, frequency, number of cycles
+    App->>App: Split grand total equally into dated payments
+    App-->>User: Payment schedule in preview
+
+    Note over User,DB: Step 6: Review & Publish
+    User->>App: Click "Publish Quotation"
+    App->>API: Submit quotation (client, duties, VAT, schedule)
+    API->>DB: Save quotation
+    DB-->>API: Saved
+    API-->>App: Published quotation
+    App-->>User: Final quotation document
+```
+
 ## Tech Stack
 
 - Frontend: Angular
@@ -64,4 +110,4 @@ This project is licensed under the MIT License.
 
 ## Author
 
-**Victor Nyambuti**  <!-- update link -->
+**Victor Nyambuti** <!-- update link -->
